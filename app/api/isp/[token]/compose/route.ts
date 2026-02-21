@@ -47,7 +47,7 @@ services:
       MINIO_ACCESS_KEY: ${isp.minioAccessKey}
       MINIO_SECRET_KEY: ${isp.minioSecretKey}
       MINIO_BUCKET: disputatio-videos
-      GATEWAY_URL: https://gateway.disputatio.com.br
+      GATEWAY_URL: https://video.disputatio.com.br
       REPORT_INTERVAL_SECONDS: "30"
     networks:
       - disputatio

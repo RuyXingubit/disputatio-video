@@ -31,8 +31,31 @@ model Isp {
   bandwidthOutTodayGb Float    @default(0)
   latitude            Float?
   longitude           Float?
+  lastHealthCheck     DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
+  videoLocations VideoLocation[]
+
   @@map("isps")
+}
+
+model VideoLocation {
+  videoId      String
+  ispId        String
+  isp          Isp      @relation(fields: [ispId], references: [id], onDelete: Cascade)
+  isPrimary    Boolean  @default(false)
+  replicatedAt DateTime @default(now())
+
+  @@id([videoId, ispId])
+  @@index([videoId])
+  @@index([ispId])
+  @@map("video_locations")
+}
+
+model ReplicationConfig {
+  key   String @id
+  value String
+
+  @@map("replication_config")
 }
