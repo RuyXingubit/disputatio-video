@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: disputatio-video-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-disputatio_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Dsp!7v#mX2@qR9nL}
+      POSTGRES_DB: ${POSTGRES_DB:-disputatio_isp_db}
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - disputatio_video_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-disputatio_admin} -d ${POSTGRES_DB:-disputatio_isp_db}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  disputatio_video_pgdata:
+    name: disputatio_video_pgdata

@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Isp {
+  id                  String   @id @default(uuid())
+  name                String
+  slug                String   @unique
+  cnpj                String
+  city                String
+  state               String
+  ipv4                String
+  ipv6                String?
+  diskOfferedGb       Int
+  techName            String
+  techEmail           String
+  techWhatsapp        String
+  ispToken            String   @unique @default(uuid())
+  minioAccessKey      String   @default("")
+  minioSecretKey      String   @default("")
+  isActive            Boolean  @default(false)
+  weight              Int      @default(100)
+  healthStatus        String   @default("unknown")
+  diskUsedGb          Float?
+  diskTotalGb         Float?
+  bandwidthOutTodayGb Float    @default(0)
+  latitude            Float?
+  longitude           Float?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("isps")
+}
