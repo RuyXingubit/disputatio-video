@@ -123,13 +123,13 @@ docker compose -f docker-compose.prod.yml logs -f caddy
 
 ### Backup do banco
 ```bash
-docker exec disputatio-isp-postgres \
+docker exec disputatio-video-postgres \
   pg_dump -U disputatio_admin disputatio_isp_db > backup_$(date +%Y%m%d).sql
 ```
 
 ### Restaurar backup
 ```bash
-docker exec -i disputatio-isp-postgres \
+docker exec -i disputatio-video-postgres \
   psql -U disputatio_admin disputatio_isp_db < backup_YYYYMMDD.sql
 ```
 
