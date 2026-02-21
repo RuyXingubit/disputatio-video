@@ -1,0 +1,13 @@
+.env
+.env*.local
+node_modules
+.next
+.git
+.agent
+*.md
+!README.md
+prisma/migrations
+.dockerignore
+Dockerfile
+docker-compose*.yml
+Caddyfile

@@ -1,0 +1,61 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: disputatio-isp-caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - web
+    depends_on:
+      - nextjs
+
+  nextjs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: disputatio-isp-nextjs
+    restart: always
+    env_file: .env
+    environment:
+      NODE_ENV: production
+    networks:
+      - web
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: disputatio-isp-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-disputatio_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Dsp!7v#mX2@qR9nL}
+      POSTGRES_DB: ${POSTGRES_DB:-disputatio_isp_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - web
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-disputatio_admin}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  web:
+    name: disputatio_web
+
+volumes:
+  caddy_data:
+    name: disputatio_caddy_data
+  caddy_config:
+    name: disputatio_caddy_config
+  postgres_data:
+    name: disputatio_postgres_data
