@@ -68,9 +68,37 @@ export async function GET(
             }
         }
 
-        // HTTP 302 redirect para o MinIO do ISP
+        // Proxying the video content to avoid Mixed Content (HTTPS -> HTTP)
         const url = buildPublicUrl(selected.isp.ipv4, videoId)
-        return NextResponse.redirect(url, 302)
+
+        try {
+            const videoResponse = await fetch(url, {
+                // Pass any necessary headers, range request for seeking
+                headers: {
+                    range: _req.headers.get('range') || ''
+                }
+            })
+
+            if (!videoResponse.ok) {
+                return NextResponse.json(
+                    { error: "video_fetch_error", message: "Erro ao buscar vídeo no nó." },
+                    { status: videoResponse.status }
+                )
+            }
+
+            // Create a new response with the video stream and correct headers
+            const responseHeaders = new Headers(videoResponse.headers)
+
+            return new NextResponse(videoResponse.body, {
+                status: videoResponse.status,
+                headers: responseHeaders,
+            })
+
+        } catch (fetchError) {
+            console.error("[gateway/resolve proxy fetch]", fetchError)
+            return NextResponse.json({ error: "Erro proxy" }, { status: 502 })
+        }
+
     } catch (error) {
         console.error("[gateway/resolve]", error)
         return NextResponse.json({ error: "Erro interno" }, { status: 500 })
