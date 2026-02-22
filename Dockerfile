@@ -8,6 +8,8 @@ RUN npm ci
 
 COPY . .
 
+# Prisma requere uma URL no generate, mesmo sendo dummy durante o build
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 RUN npx prisma generate
 RUN npm run build
 
