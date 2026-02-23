@@ -17,9 +17,7 @@ services:
       - nextjs
 
   nextjs:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: xingubit/disputatio-video:latest
     container_name: disputatio-isp-nextjs
     restart: always
     env_file: .env

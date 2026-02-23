@@ -1,6 +1,6 @@
 # Deploy — Disputatio ISP (`video.disputatio.com.br`)
 
-Stack de produção: **Next.js 16** + **Caddy** (SSL automático) + **PostgreSQL 16**, tudo em Docker.
+Stack de produção: **Next.js 16** + **Caddy** (SSL automático) + **PostgreSQL 16** + **MinIO** (Armazenamento de Vídeos), tudo em Docker.
 
 ---
 
@@ -11,6 +11,7 @@ Stack de produção: **Next.js 16** + **Caddy** (SSL automático) + **PostgreSQL
 | Docker 24+ | `docker --version` |
 | Docker Compose v2 | `docker compose version` |
 | Porta 80 e 443 abertas no firewall | `ufw allow 80 && ufw allow 443` |
+| Porta 9000 aberta no firewall | `ufw allow 9000` (Para API/Downloads do MinIO) |
 | DNS apontado para o IP da VM | `ping video.disputatio.com.br` |
 
 ---
@@ -36,8 +37,17 @@ nano .env
 
 Exemplo de `.env` completo para produção:
 ```env
-DATABASE_URL="postgresql://disputatio_admin:Dsp%217v%23mX2%40qR9nL@postgres:5432/disputatio_isp_db?schema=public"
+# Banco de Dados
+POSTGRES_USER="disputatio_admin"
+POSTGRES_PASSWORD="SuaSenhaForteAqui"
+POSTGRES_DB="disputatio_isp_db"
+DATABASE_URL="postgresql://disputatio_admin:SuaSenhaForteAqui@postgres:5432/disputatio_isp_db?schema=public"
 
+# MinIO (Armazenamento Local default)
+MINIO_ROOT_USER="admin"
+MINIO_ROOT_PASSWORD="SuaSenhaForteMinio"
+
+# Aplicação
 ADMIN_SECRET="senha-super-forte-aqui"
 ADMIN_EMAIL="ruy@proserv.net.br"
 
@@ -55,7 +65,8 @@ docker compose -f docker-compose.prod.yml run --rm nextjs \
 
 ### 4. Subir a stack
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
 ```
 
 O Caddy busca o certificado Let's Encrypt automaticamente na **primeira requisição HTTP**. Aguarde ~30 segundos após o primeiro acesso para o HTTPS ativar.
@@ -74,11 +85,14 @@ docker compose -f docker-compose.prod.yml logs -f
 ## Atualizar para uma nova versão
 
 ```bash
-# Puxar as mudanças
+# Atualizar configurações do compose/scripts (opcional)
 git pull
 
-# Rebuildar e reiniciar (sem downtime do banco)
-docker compose -f docker-compose.prod.yml up -d --build nextjs
+# Baixar a nova imagem do Docker Hub
+docker compose -f docker-compose.prod.yml pull nextjs
+
+# Reimplantar os containers (sem downtime do banco)
+docker compose -f docker-compose.prod.yml up -d
 
 # Se houver novas migrations:
 docker compose -f docker-compose.prod.yml run --rm nextjs \
@@ -92,14 +106,17 @@ docker compose -f docker-compose.prod.yml run --rm nextjs \
 ```
 Internet
    │
+   ├─► [MinIO :9000] ← API/Downloads diretos via Presigned URL
+   │
    ▼
 [Caddy :80/:443]  ← SSL Let's Encrypt automático
    │
    ▼ (rede interna Docker)
 [Next.js :3000]  ← app disputatio-isp
    │
-   ▼
-[PostgreSQL :5432]  ← sem porta exposta externamente
+   ├─► [PostgreSQL :5432] ← Banco de dados interno
+   │
+   └─► [MinIO :9000]      ← Comunicação interna Next.js <> MinIO
 ```
 
 ---
@@ -123,13 +140,13 @@ docker compose -f docker-compose.prod.yml logs -f caddy
 
 ### Backup do banco
 ```bash
-docker exec disputatio-video-postgres \
+docker exec disputatio-isp-postgres \
   pg_dump -U disputatio_admin disputatio_isp_db > backup_$(date +%Y%m%d).sql
 ```
 
 ### Restaurar backup
 ```bash
-docker exec -i disputatio-video-postgres \
+docker exec -i disputatio-isp-postgres \
   psql -U disputatio_admin disputatio_isp_db < backup_YYYYMMDD.sql
 ```
 
@@ -156,8 +173,8 @@ docker compose -f docker-compose.prod.yml down -v
 - Verificar que o `DATABASE_URL` no `.env` usa `postgres` como host (não IP)
 - Verificar se o container postgres está saudável: `docker compose -f docker-compose.prod.yml ps`
 
-### Rebuild forçado
+### Atualizar a imagem forçadamente
 ```bash
-docker compose -f docker-compose.prod.yml build --no-cache nextjs
+docker compose -f docker-compose.prod.yml pull nextjs
 docker compose -f docker-compose.prod.yml up -d nextjs
 ```
