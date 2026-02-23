@@ -87,7 +87,14 @@ export async function GET(
             }
 
             // Create a new response with the video stream and correct headers
-            const responseHeaders = new Headers(videoResponse.headers)
+            const responseHeaders = new Headers()
+            const allowedHeaders = ['content-type', 'content-length', 'content-range', 'accept-ranges', 'cache-control']
+
+            videoResponse.headers.forEach((value, key) => {
+                if (allowedHeaders.includes(key.toLowerCase())) {
+                    responseHeaders.set(key, value)
+                }
+            })
 
             return new NextResponse(videoResponse.body, {
                 status: videoResponse.status,
