@@ -41,7 +41,7 @@ Exemplo de `.env` completo para produção:
 POSTGRES_USER="disputatio_admin"
 POSTGRES_PASSWORD="SuaSenhaForteAqui"
 POSTGRES_DB="disputatio_isp_db"
-DATABASE_URL="postgresql://disputatio_admin:SuaSenhaForteAqui@postgres:5432/disputatio_isp_db?schema=public"
+DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public"
 
 # MinIO (Armazenamento Local default)
 MINIO_ROOT_USER="admin"
