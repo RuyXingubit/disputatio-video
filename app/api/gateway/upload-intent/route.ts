@@ -10,11 +10,12 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "contentType obrigatório" }, { status: 400 })
         }
 
-        // Seleciona ISP: ativo, saudável, com mais espaço livre
+        // Seleciona ISP: ativo, saudável, com mais espaço livre (excluindo o minio padrão)
         const isps = await prisma.isp.findMany({
             where: {
                 isActive: true,
                 healthStatus: { in: ["healthy", "unknown"] },
+                slug: { not: "default-minio" }
             },
             orderBy: [
                 { diskUsedGb: "asc" },       // menos disco usado primeiro
@@ -22,15 +23,42 @@ export async function POST(req: NextRequest) {
             ],
         })
 
-        if (isps.length === 0) {
-            return NextResponse.json(
-                { error: "Nenhum ISP disponível para upload" },
-                { status: 503 },
-            )
+        let availableIsps = isps;
+
+        if (availableIsps.length === 0) {
+            // Nenhum provedor externo disponível, fallback para o MinIO padrão
+            const defaultIsp = await prisma.isp.upsert({
+                where: { slug: "default-minio" },
+                update: {
+                    ipv4: "minio", // Nome da rede interna do docker
+                    minioAccessKey: process.env.MINIO_ROOT_USER || "admin",
+                    minioSecretKey: process.env.MINIO_ROOT_PASSWORD || "MinioAdminPassword123!",
+                    isActive: true,
+                    healthStatus: "healthy",
+                },
+                create: {
+                    name: "Disputatio Storage (Default)",
+                    slug: "default-minio",
+                    cnpj: "00000000000000",
+                    city: "São Paulo",
+                    state: "SP",
+                    ipv4: "minio",
+                    techName: "Admin",
+                    techEmail: "admin@disputatio.com.br",
+                    techWhatsapp: "00000000000",
+                    diskOfferedGb: 1000,
+                    minioAccessKey: process.env.MINIO_ROOT_USER || "admin",
+                    minioSecretKey: process.env.MINIO_ROOT_PASSWORD || "MinioAdminPassword123!",
+                    isActive: true,
+                    healthStatus: "healthy",
+                    weight: 10,
+                },
+            });
+            availableIsps = [defaultIsp];
         }
 
         // Scoring: 60% espaço livre, 30% saúde, 10% peso
-        const scored = isps.map(isp => {
+        const scored = availableIsps.map(isp => {
             const diskFree = (isp.diskTotalGb ?? isp.diskOfferedGb) - (isp.diskUsedGb ?? 0)
             const healthScore = isp.healthStatus === "healthy" ? 1 : 0.5
             const weightNorm = isp.weight / 100
@@ -44,12 +72,21 @@ export async function POST(req: NextRequest) {
         scored.sort((a, b) => b.score - a.score)
         const selected = scored[0].isp
 
+        // Configuração de URL personalizada para MinIO interno
+        let customEndpoint;
+        if (selected.slug === "default-minio") {
+            const publicHost = req.headers.get("host")?.split(":")[0] || "localhost";
+            customEndpoint = `http://${publicHost}:9000`;
+        }
+
         // Gera presigned URL
         const { uploadUrl, fileKey } = await generateUploadUrl(
             selected.ipv4,
             selected.minioAccessKey,
             selected.minioSecretKey,
             contentType,
+            undefined,
+            customEndpoint
         )
 
         // Registra localização primária

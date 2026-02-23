@@ -4,10 +4,10 @@ import { randomUUID } from "crypto"
 
 const BUCKET = "disputatio-videos"
 
-export function createMinioClient(ipv4: string, accessKey: string, secretKey: string) {
+export function createMinioClient(ipv4: string, accessKey: string, secretKey: string, customEndpoint?: string) {
     return new S3Client({
         region: "us-east-1",
-        endpoint: `http://${ipv4}:9000`,
+        endpoint: customEndpoint || `http://${ipv4}:9000`,
         forcePathStyle: true,
         credentials: {
             accessKeyId: accessKey,
@@ -22,8 +22,9 @@ export async function generateUploadUrl(
     secretKey: string,
     contentType: string,
     fileKey?: string,
+    customEndpoint?: string
 ) {
-    const client = createMinioClient(ipv4, accessKey, secretKey)
+    const client = createMinioClient(ipv4, accessKey, secretKey, customEndpoint)
     const key = fileKey ?? `${randomUUID()}`
 
     const command = new PutObjectCommand({

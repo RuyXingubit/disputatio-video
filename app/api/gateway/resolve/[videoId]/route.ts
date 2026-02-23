@@ -20,6 +20,7 @@ export async function GET(
                         weight: true,
                         healthStatus: true,
                         isActive: true,
+                        slug: true,
                     },
                 },
             },
@@ -53,6 +54,12 @@ export async function GET(
                 },
                 { status: 503 },
             )
+        }
+
+        // Tenta priorizar provedores externos (não default)
+        const externalLocations = available.filter(l => l.isp.slug !== "default-minio")
+        if (externalLocations.length > 0) {
+            available = externalLocations
         }
 
         // Round-robin ponderado por weight

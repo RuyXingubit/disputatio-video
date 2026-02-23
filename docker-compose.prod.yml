@@ -25,16 +25,22 @@ services:
     env_file: .env
     environment:
       NODE_ENV: production
+      # O Next.js se conectará ao MinIO através da rede docker interna (http://minio:9000)
     networks:
       - web
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
 
   postgres:
     image: postgres:16-alpine
     container_name: disputatio-isp-postgres
     restart: always
     environment:
+      # TODO: Configure a senha do banco de dados no arquivo .env
+      # Exemplo no .env: POSTGRES_PASSWORD=SuaSenhaForteAqui
       POSTGRES_USER: ${POSTGRES_USER:-disputatio_admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Dsp!7v#mX2@qR9nL}
       POSTGRES_DB: ${POSTGRES_DB:-disputatio_isp_db}
@@ -48,6 +54,25 @@ services:
       timeout: 5s
       retries: 5
 
+  minio:
+    image: minio/minio:latest
+    container_name: disputatio-isp-minio
+    restart: always
+    environment:
+      # TODO: Configure root user e senha do MinIO no arquivo .env para acesso seguro
+      # Exemplo no .env:
+      # MINIO_ROOT_USER=seu_usuario_admin
+      # MINIO_ROOT_PASSWORD=sua_senha_forte_minio
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-MinioAdminPassword123!}
+    ports:
+      - "9000:9000" # Porta da API (exposta para que usuários possam acessar os vídeos via S3/Presigned URLs externamente)
+    volumes:
+      - minio_data:/data
+    command: server /data
+    networks:
+      - web
+
 networks:
   web:
     name: disputatio_web
@@ -59,3 +84,5 @@ volumes:
     name: disputatio_caddy_config
   postgres_data:
     name: disputatio_postgres_data
+  minio_data:
+    name: disputatio_minio_data
