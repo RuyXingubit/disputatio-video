@@ -19,7 +19,16 @@ Stack de produção: **Next.js 16** + **Caddy** (SSL automático) + **PostgreSQL
 ## Primeira vez (deploy inicial)
 
 ### 1. Baixar os arquivos necessários
-Crie uma pasta para o projeto e baixe os arquivos de configuração:
+
+Como a imagem Docker já contém a aplicação final, **não precisamos clonar o repositório** na VM de produção.
+
+Baixe apenas os 3 arquivos de configuração essenciais. Você pode fazer isso manualmente pelos links abaixo ou direto pelo terminal da VM:
+
+- [docker-compose.prod.yml](https://raw.githubusercontent.com/RuyXingubit/disputatio-video/main/docker-compose.prod.yml)
+- [.env.example](https://raw.githubusercontent.com/RuyXingubit/disputatio-video/main/.env.example)
+- [Caddyfile](https://raw.githubusercontent.com/RuyXingubit/disputatio-video/main/Caddyfile)
+
+**Via Terminal da VM (Recomendado):**
 ```bash
 mkdir disputatio-video && cd disputatio-video
 wget https://raw.githubusercontent.com/RuyXingubit/disputatio-video/main/docker-compose.prod.yml
