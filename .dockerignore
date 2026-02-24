@@ -6,6 +6,7 @@ node_modules
 .agent
 *.md
 !README.md
+prisma/migrations
 .dockerignore
 Dockerfile
 docker-compose*.yml
