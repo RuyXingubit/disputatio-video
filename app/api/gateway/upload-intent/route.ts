@@ -72,12 +72,15 @@ export async function POST(req: NextRequest) {
         scored.sort((a, b) => b.score - a.score)
         const selected = scored[0].isp
 
-        // Configuração de URL personalizada para MinIO interno via Proxy HTTPS do Caddy
+        // Configuração de URL personalizada para MinIO interno via Proxy Caddy HTTPS
         let customEndpoint;
         if (selected.slug === "default-minio") {
             const publicHost = req.headers.get("host")?.split(":")[0] || "localhost";
-            // Usa https e porta padrão (443 invisível) para a presigned url para evitar erro de Mixed Content
-            customEndpoint = `https://${publicHost}`;
+            if (process.env.NODE_ENV === "production" || req.headers.get("x-forwarded-proto") === "https") {
+                customEndpoint = `https://${publicHost}`;
+            } else {
+                customEndpoint = `http://${publicHost}:9000`;
+            }
         }
 
         // Gera presigned URL
