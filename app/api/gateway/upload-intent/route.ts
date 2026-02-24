@@ -103,9 +103,15 @@ export async function POST(req: NextRequest) {
         })
 
         const resolveUrl = `/api/gateway/resolve/${fileKey}`
+        const host = req.headers.get("x-forwarded-proto") === "https" || process.env.NODE_ENV === "production"
+            ? `https://${req.headers.get("host")}`
+            : `http://${req.headers.get("host")}`
+
+        // Ao invez de devolver a URL HTTP pura do MinIO do parceiro, devolve a Relay
+        const safeUploadUrl = `${host}/api/gateway/relay/${fileKey}`
 
         return NextResponse.json({
-            uploadUrl,
+            uploadUrl: safeUploadUrl,
             fileKey,
             resolveUrl,
             isp: { id: selected.id, name: selected.name, region: selected.state },
