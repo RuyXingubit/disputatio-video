@@ -170,8 +170,8 @@ export default function AdminPage() {
                                 </div>
 
                                 {/* Ações */}
-                                {!isp.isActive && (
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", minWidth: "120px" }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", minWidth: "120px" }}>
+                                    {!isp.isActive && (
                                         <button
                                             className="btn btn-primary"
                                             disabled={acting === isp.id}
@@ -180,20 +180,20 @@ export default function AdminPage() {
                                         >
                                             {acting === isp.id ? "..." : "✓ Aprovar"}
                                         </button>
-                                        <button
-                                            disabled={acting === isp.id}
-                                            onClick={() => handleAction(isp.id, "reject")}
-                                            style={{
-                                                padding: "0.5rem 1rem", fontSize: "0.875rem", fontFamily: "var(--font-sans)",
-                                                fontWeight: 600, cursor: "pointer", borderRadius: "var(--radius-sm)",
-                                                background: "transparent", border: "1px solid hsl(0,65%,50%,0.4)",
-                                                color: "hsl(0,65%,60%)", transition: "all 0.2s",
-                                            }}
-                                        >
-                                            ✕ Rejeitar
-                                        </button>
-                                    </div>
-                                )}
+                                    )}
+                                    <button
+                                        disabled={acting === isp.id}
+                                        onClick={() => handleAction(isp.id, "reject")}
+                                        style={{
+                                            padding: "0.5rem 1rem", fontSize: "0.875rem", fontFamily: "var(--font-sans)",
+                                            fontWeight: 600, cursor: "pointer", borderRadius: "var(--radius-sm)",
+                                            background: "transparent", border: "1px solid hsl(0,65%,50%,0.4)",
+                                            color: "hsl(0,65%,60%)", transition: "all 0.2s",
+                                        }}
+                                    >
+                                        ✕ {isp.isActive ? "Remover provedor" : "Rejeitar"}
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>
