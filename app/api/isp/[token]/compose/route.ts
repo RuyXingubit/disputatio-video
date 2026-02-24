@@ -38,7 +38,7 @@ services:
       retries: 3
 
   node-agent:
-    image: disputatio/node-agent:latest
+    image: ${process.env.DOCKERHUB_USERNAME || 'disputatio'}/node-agent:latest
     container_name: disputatio-agent
     restart: always
     environment:

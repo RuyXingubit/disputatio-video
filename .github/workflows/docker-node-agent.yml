@@ -9,7 +9,7 @@ on:
       - '.github/workflows/docker-node-agent.yml'
 
 env:
-  IMAGE_NAME: disputatio/node-agent
+  IMAGE_NAME: node-agent
 
 jobs:
   build-and-push:
@@ -31,7 +31,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.IMAGE_NAME }}
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest
             type=sha,prefix=,format=short
