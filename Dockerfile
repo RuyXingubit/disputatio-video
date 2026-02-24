@@ -34,6 +34,10 @@ COPY --from=builder /app/prisma ./prisma
 # Em vez de caçar binários soltos, instalamos ele como comando disponível.
 RUN npm install prisma@^6
 
+# Script de inicializacao com Migrations automaticas
+COPY --chown=nextjs:nodejs start.sh ./start.sh
+RUN chmod +x ./start.sh
+
 USER nextjs
 
 EXPOSE 3000
@@ -41,4 +45,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["./start.sh"]
