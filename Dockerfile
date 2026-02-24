@@ -28,13 +28,11 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# O Prisma precisa do schema e da CLI para rodar migrações em produção
+# O Prisma precisa do schema para rodar migrações em produção
 COPY --from=builder /app/prisma ./prisma
-# O standalone normalmente não copia o CLI do prisma. Precisamos da node_modules inteira dele.
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-# Copiar o executável gerado no bin para que o comando npx ache o prisma na VM
-COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+# O Prisma CLI não embarca nativamente com o standalone.
+# Em vez de caçar binários soltos, instalamos ele como comando disponível.
+RUN npm install prisma@7.4.1
 
 USER nextjs
 
