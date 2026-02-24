@@ -30,11 +30,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # O Prisma precisa do schema para rodar migrações em produção
 COPY --from=builder /app/prisma ./prisma
-# Prisma 7+ exige o prisma.config.ts para ler o DATABASE_URL via env()
-COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 # O Prisma CLI não embarca nativamente com o standalone.
 # Em vez de caçar binários soltos, instalamos ele como comando disponível.
-RUN npm install prisma@7.4.1
+RUN npm install prisma@^6
 
 USER nextjs
 
