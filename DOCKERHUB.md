@@ -15,9 +15,23 @@ Este repositório contém a imagem Docker do **Video Gateway**, responsável por
 
 O uso recomendado é via `docker-compose.prod.yml`, emparelhado com Caddy, PostgreSQL e MinIO.
 
-### docker-compose.prod.yml
+### Baixando a stack de deploy
 
-```yaml
+Para iniciar o seu Gateway na sua instáncia rapidamente sem precisar clonar o projeto inteiro, baixe os arquivos diretamente via terminal:
+
+```bash
+mkdir disputatio-video && cd disputatio-video
+
+wget https://raw.githubusercontent.com/RuyXingubit/disputatio-video/main/docker-compose.prod.yml
+wget https://raw.githubusercontent.com/RuyXingubit/disputatio-video/main/.env.example
+wget https://raw.githubusercontent.com/RuyXingubit/disputatio-video/main/Caddyfile
+```
+
+Em seguida copie o `.env.example` para `.env` e ajuste as variáveis.
+
+### Resumo do docker-compose.prod.yml
+
+O arquivo que você baixará contém os seguintes serviços acoplados:
 version: '3.8'
 
 services:

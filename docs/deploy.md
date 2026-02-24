@@ -18,10 +18,13 @@ Stack de produção: **Next.js 16** + **Caddy** (SSL automático) + **PostgreSQL
 
 ## Primeira vez (deploy inicial)
 
-### 1. Clonar o repositório
+### 1. Baixar os arquivos necessários
+Crie uma pasta para o projeto e baixe os arquivos de configuração:
 ```bash
-git clone https://github.com/RuyXingubit/disputatio-video.git
-cd disputatio-video
+mkdir disputatio-video && cd disputatio-video
+wget https://raw.githubusercontent.com/RuyXingubit/disputatio-video/main/docker-compose.prod.yml
+wget https://raw.githubusercontent.com/RuyXingubit/disputatio-video/main/.env.example
+wget https://raw.githubusercontent.com/RuyXingubit/disputatio-video/main/Caddyfile
 ```
 
 ### 2. Criar o `.env` de produção
@@ -85,8 +88,9 @@ docker compose -f docker-compose.prod.yml logs -f
 ## Atualizar para uma nova versão
 
 ```bash
-# Atualizar configurações do compose/scripts (opcional)
-git pull
+# Baixar arquivos de configuração atualizados (se houver mudanças no github)
+wget -qO docker-compose.prod.yml https://raw.githubusercontent.com/RuyXingubit/disputatio-video/main/docker-compose.prod.yml
+wget -qO Caddyfile https://raw.githubusercontent.com/RuyXingubit/disputatio-video/main/Caddyfile
 
 # Baixar a nova imagem do Docker Hub
 docker compose -f docker-compose.prod.yml pull nextjs
