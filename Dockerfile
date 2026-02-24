@@ -27,7 +27,11 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+
+# O Prisma precisa do schema e da CLI para rodar migrações em produção
+COPY --from=builder /app/prisma ./prisma
+# O standalone normalmente não copia o CLI do prisma. Precisamos da node_modules inteira dele.
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 USER nextjs
