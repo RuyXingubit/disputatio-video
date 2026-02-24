@@ -73,14 +73,14 @@ services:
 
 networks:
   web:
-    name: disputatio_web
+    name: disputatio_video_web
 
 volumes:
   caddy_data:
-    name: disputatio_caddy_data
+    name: disputatio_video_caddy_data
   caddy_config:
-    name: disputatio_caddy_config
+    name: disputatio_video_caddy_config
   postgres_data:
-    name: disputatio_postgres_data
+    name: disputatio_video_postgres_data
   minio_data:
-    name: disputatio_minio_data
+    name: disputatio_video_minio_data
