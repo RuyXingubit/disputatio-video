@@ -33,6 +33,8 @@ COPY --from=builder /app/prisma ./prisma
 # O standalone normalmente não copia o CLI do prisma. Precisamos da node_modules inteira dele.
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+# Copiar o executável gerado no bin para que o comando npx ache o prisma na VM
+COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
 
 USER nextjs
 
