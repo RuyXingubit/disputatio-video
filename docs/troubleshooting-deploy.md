@@ -60,3 +60,11 @@ Este documento centraliza as soluções para os principais desafios de infraestr
    }
    ```
    Dessa forma, o Caddy abraça a request HTTP, insere o carimbo do Let's Encrypt, acalma o browser host, e a passa limpinha pra porta de container Docker.
+
+## 7. Erro de Permissão no Docker em VMs Proxmox LXC/LXD
+**O Problema**: O parceiro tenta rodar o `docker compose up -d` da stack ISP e o container morre de imediato com a mensagem de `permission denied` (ex: `open sysctl net.ipv4.ip_unprivileged_port_start file: reopen fd 8: permission denied`).
+**A Causa Real**: Isso ocorre quando o parceiro tenta rodar os containers dentro de um container do tipo LXC/LXD (como nos templates do Proxmox) sem ativar os atributos de aninhamento (*nesting*) e permissões de privilégio necessárias (`privileged/keyctl`). O Docker no modo "Docker-in-Docker" (ou Docker-in-LXC) sofre bloqueio pelo AppArmor nativo da virtualização do host sobre o _sysctl_.
+
+**Como Resolver**:
+- **Solução Definitiva:** Orientar o parceiro a subir a VM usando uma imagem ISO completa (Full VM / KVM) no invés de Container LXC. Máquinas virtuais completas rodam o daemon do Docker nativamente sem restrições de permissão ou kernel limits.
+- **Alternativa paliativa:** Se o parceiro insistir no modelo LXC (Proxmox), ele deve editar o container no PVE marcando a opção **"Nesting"** (Feature) habilitada e retirando o status de *Unprivileged container*, além de reiniciá-lo antes de tentar o *docker pull* novamente.
