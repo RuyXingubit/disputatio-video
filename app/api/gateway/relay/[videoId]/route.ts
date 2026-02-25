@@ -64,9 +64,24 @@ export async function PUT(
             return NextResponse.json({ error: `Upload falhou no provedor parceiro (${response.status})` }, { status: response.status })
         }
 
-        return NextResponse.json({ success: true, message: "Vídeo salvo com sucesso na rede." })
+        const out = NextResponse.json({ success: true, message: "Vídeo salvo com sucesso na rede." })
+        out.headers.set("Access-Control-Allow-Origin", "*")
+        return out
     } catch (error) {
         console.error("[gateway/relay]", error)
-        return NextResponse.json({ error: "Erro interno ao trafegar o arquivo." }, { status: 500 })
+        const err = NextResponse.json({ error: "Erro interno ao trafegar o arquivo." }, { status: 500 })
+        err.headers.set("Access-Control-Allow-Origin", "*")
+        return err
     }
+}
+
+export async function OPTIONS() {
+    return new NextResponse(null, {
+        status: 204,
+        headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "PUT, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        },
+    })
 }
