@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 const ESTADOS_BR = [
     "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS",
@@ -14,10 +14,23 @@ export function RegisterForm() {
     const [form, setForm] = useState({
         name: "", cnpj: "", city: "", state: "", ipv4: "",
         diskOfferedGb: "", techName: "", techEmail: "", techWhatsapp: "",
-        hasIpv6: false, ipv6: "",
+        hasIpv6: false, ipv6: "", latitude: "", longitude: "",
     })
     const [errors, setErrors] = useState<Record<string, string>>({})
     const [status, setStatus] = useState<FormState>("idle")
+    const [cities, setCities] = useState<{ id: number, nome: string }[]>([])
+
+    useEffect(() => {
+        if (!form.state) {
+            setCities([])
+            set("city", "")
+            return
+        }
+        fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${form.state}/municipios`)
+            .then(res => res.json())
+            .then(data => setCities(data))
+            .catch(() => setCities([]))
+    }, [form.state])
 
     function set(field: string, value: string | boolean) {
         setForm((f) => ({ ...f, [field]: value }))
@@ -166,12 +179,15 @@ export function RegisterForm() {
                         {/* Cidade */}
                         <div>
                             <label style={labelStyle}>Cidade *</label>
-                            <input
+                            <select
                                 style={inputStyle("city")}
                                 value={form.city}
                                 onChange={e => set("city", e.target.value)}
-                                placeholder="São Paulo"
-                            />
+                                disabled={!form.state || cities.length === 0}
+                            >
+                                <option value="">Selecione...</option>
+                                {cities.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
+                            </select>
                             {errors.city && <p style={{ fontSize: "0.8125rem", color: "hsl(0,65%,60%)", marginTop: "0.25rem" }}>{errors.city}</p>}
                         </div>
 
@@ -228,6 +244,39 @@ export function RegisterForm() {
                                 {errors.ipv6 && <p style={{ fontSize: "0.8125rem", color: "hsl(0,65%,60%)", marginTop: "0.25rem" }}>{errors.ipv6}</p>}
                             </div>
                         )}
+
+                        {/* Divisor */}
+                        <div style={{ gridColumn: "1 / -1", borderTop: "1px solid var(--border-subtle)", paddingTop: "var(--space-3)", marginTop: "var(--space-1)" }}>
+                            <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: "var(--space-3)" }}>
+                                (Opcional) Localização avançada — para fixar ponto exato no mapa
+                            </p>
+                        </div>
+
+                        {/* Latitude */}
+                        <div>
+                            <label style={labelStyle}>Latitude</label>
+                            <input
+                                type="number"
+                                step="any"
+                                style={inputStyle("latitude")}
+                                value={form.latitude}
+                                onChange={e => set("latitude", e.target.value)}
+                                placeholder="ex: -23.5505"
+                            />
+                        </div>
+
+                        {/* Longitude */}
+                        <div>
+                            <label style={labelStyle}>Longitude</label>
+                            <input
+                                type="number"
+                                step="any"
+                                style={inputStyle("longitude")}
+                                value={form.longitude}
+                                onChange={e => set("longitude", e.target.value)}
+                                placeholder="ex: -46.6333"
+                            />
+                        </div>
 
                         {/* Divisor */}
                         <div style={{ gridColumn: "1 / -1", borderTop: "1px solid var(--border-subtle)", paddingTop: "var(--space-3)", marginTop: "var(--space-1)" }}>

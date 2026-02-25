@@ -30,10 +30,31 @@ export async function POST(req: NextRequest) {
         const {
             name, cnpj, city, state, ipv4, ipv6,
             diskOfferedGb, techName, techEmail, techWhatsapp,
+            latitude, longitude,
         } = body
 
         if (!name || !cnpj || !city || !state || !ipv4 || !diskOfferedGb || !techName || !techEmail || !techWhatsapp) {
             return NextResponse.json({ error: "Campos obrigatórios faltando" }, { status: 400 })
+        }
+
+        let finalLat = latitude ? Number(latitude) : null
+        let finalLon = longitude ? Number(longitude) : null
+
+        // Se o usuário não passou coordenada manual exata, nós inferimos através da API do OpenStreetMap
+        if (!finalLat || !finalLon) {
+            try {
+                const geoUrl = `https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(city)}&state=${encodeURIComponent(state)}&country=Brazil&format=json&limit=1`
+                const geoRes = await fetch(geoUrl, {
+                    headers: { 'User-Agent': 'DisputatioVideoNetwork/1.0' }
+                })
+                const geoData = await geoRes.json()
+                if (geoData && geoData.length > 0) {
+                    finalLat = Number(geoData[0].lat)
+                    finalLon = Number(geoData[0].lon)
+                }
+            } catch (geoErr) {
+                console.error("[isp/register] Nominatim fetch failed:", geoErr)
+            }
         }
 
         const baseSlug = toSlug(name)
@@ -47,6 +68,8 @@ export async function POST(req: NextRequest) {
                 ipv6: ipv6 || null,
                 diskOfferedGb: Number(diskOfferedGb),
                 techName, techEmail, techWhatsapp,
+                latitude: finalLat,
+                longitude: finalLon,
                 minioAccessKey: generateKey(20),
                 minioSecretKey: generateKey(40),
                 isActive: false,
