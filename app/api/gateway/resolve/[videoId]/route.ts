@@ -75,43 +75,13 @@ export async function GET(
             }
         }
 
-        // Proxying the video content to avoid Mixed Content (HTTPS -> HTTP)
+        // O Next.js não lida bem com proxy de grandes streams (Range requests no Safari param com stream closed).
+        // A melhor solução nativa e mais barata de infraestrutura é repassar o cliente diretamente
+        // para a URL pública do MinIO do ISP parceiro.
         const url = buildPublicUrl(selected.isp.ipv4, videoId)
 
-        try {
-            const videoResponse = await fetch(url, {
-                // Pass any necessary headers, range request for seeking
-                headers: {
-                    range: _req.headers.get('range') || ''
-                }
-            })
+        return NextResponse.redirect(url, 307)
 
-            if (!videoResponse.ok) {
-                return NextResponse.json(
-                    { error: "video_fetch_error", message: "Erro ao buscar vídeo no nó." },
-                    { status: videoResponse.status }
-                )
-            }
-
-            // Create a new response with the video stream and correct headers
-            const responseHeaders = new Headers()
-            const allowedHeaders = ['content-type', 'content-length', 'content-range', 'accept-ranges', 'cache-control']
-
-            videoResponse.headers.forEach((value, key) => {
-                if (allowedHeaders.includes(key.toLowerCase())) {
-                    responseHeaders.set(key, value)
-                }
-            })
-
-            return new NextResponse(videoResponse.body, {
-                status: videoResponse.status,
-                headers: responseHeaders,
-            })
-
-        } catch (fetchError) {
-            console.error("[gateway/resolve proxy fetch]", fetchError)
-            return NextResponse.json({ error: "Erro proxy" }, { status: 502 })
-        }
 
     } catch (error) {
         console.error("[gateway/resolve]", error)
