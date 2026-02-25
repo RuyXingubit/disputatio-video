@@ -3,41 +3,42 @@ import { prisma } from "@/lib/prisma"
 import nodemailer from "nodemailer"
 
 function getTransport() {
-    return nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT ?? 587),
-        auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
-        },
-    })
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT ?? 587),
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  })
 }
 
 export async function POST(
-    req: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-    const { id } = await params
-    const { action } = await req.json() // "approve" | "reject"
+  const { id } = await params
+  const body = await req.json()
+  const { action, latitude, longitude } = body
 
-    const isp = await prisma.isp.findUnique({ where: { id } })
-    if (!isp) return NextResponse.json({ error: "ISP não encontrado" }, { status: 404 })
+  const isp = await prisma.isp.findUnique({ where: { id } })
+  if (!isp) return NextResponse.json({ error: "ISP não encontrado" }, { status: 404 })
 
-    if (action === "approve") {
-        const updatedIsp = await prisma.isp.update({
-            where: { id },
-            data: { isActive: true },
-        })
+  if (action === "approve") {
+    const updatedIsp = await prisma.isp.update({
+      where: { id },
+      data: { isActive: true },
+    })
 
-        // E-mail ao técnico do ISP com link para baixar o docker-compose
-        const composeUrl = `https://video.disputatio.com.br/api/isp/${updatedIsp.ispToken}/compose`
-        try {
-            const transport = getTransport()
-            await transport.sendMail({
-                from: `"Disputatio ISP" <${process.env.SMTP_USER}>`,
-                to: updatedIsp.techEmail,
-                subject: `✅ Cadastro aprovado — ${updatedIsp.name}`,
-                html: `
+    // E-mail ao técnico do ISP com link para baixar o docker-compose
+    const composeUrl = `https://video.disputatio.com.br/api/isp/${updatedIsp.ispToken}/compose`
+    try {
+      const transport = getTransport()
+      await transport.sendMail({
+        from: `"Disputatio ISP" <${process.env.SMTP_USER}>`,
+        to: updatedIsp.techEmail,
+        subject: `✅ Cadastro aprovado — ${updatedIsp.name}`,
+        html: `
           <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; color: #e8e8e8; background: #0f1210; padding: 32px; border-radius: 8px;">
             <h1 style="font-size: 1.5rem; margin-bottom: 8px;">Bem-vindo ao Disputatio ISP, ${updatedIsp.techName}!</h1>
             <p style="color: #999; margin-bottom: 24px;">
@@ -68,24 +69,24 @@ docker compose up -d</pre>
             </p>
           </div>
         `,
-            })
-        } catch (emailErr) {
-            console.error("[admin/approve] Erro ao enviar e-mail:", emailErr)
-        }
-
-        return NextResponse.json({ ok: true, message: "ISP aprovado e e-mail enviado" })
+      })
+    } catch (emailErr) {
+      console.error("[admin/approve] Erro ao enviar e-mail:", emailErr)
     }
 
-    if (action === "reject") {
-        await prisma.isp.delete({ where: { id } })
+    return NextResponse.json({ ok: true, message: "ISP aprovado e e-mail enviado" })
+  }
 
-        try {
-            const transport = getTransport()
-            await transport.sendMail({
-                from: `"Disputatio ISP" <${process.env.SMTP_USER}>`,
-                to: isp.techEmail,
-                subject: `Sobre seu cadastro no Disputatio ISP — ${isp.name}`,
-                html: `
+  if (action === "reject") {
+    await prisma.isp.delete({ where: { id } })
+
+    try {
+      const transport = getTransport()
+      await transport.sendMail({
+        from: `"Disputatio ISP" <${process.env.SMTP_USER}>`,
+        to: isp.techEmail,
+        subject: `Sobre seu cadastro no Disputatio ISP — ${isp.name}`,
+        html: `
           <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; color: #e8e8e8; background: #0f1210; padding: 32px; border-radius: 8px;">
             <h1 style="font-size: 1.5rem; margin-bottom: 8px;">Olá, ${isp.techName}</h1>
             <p style="color: #999;">
@@ -98,13 +99,25 @@ docker compose up -d</pre>
             </p>
           </div>
         `,
-            })
-        } catch (emailErr) {
-            console.error("[admin/reject] Erro ao enviar e-mail:", emailErr)
-        }
-
-        return NextResponse.json({ ok: true, message: "ISP rejeitado e removido" })
+      })
+    } catch (emailErr) {
+      console.error("[admin/reject] Erro ao enviar e-mail:", emailErr)
     }
 
-    return NextResponse.json({ error: "Ação inválida" }, { status: 400 })
+    return NextResponse.json({ ok: true, message: "ISP rejeitado e removido" })
+  }
+
+  if (action === "update_coords") {
+    await prisma.isp.update({
+      where: { id },
+      data: {
+        latitude: latitude ? Number(latitude) : null,
+        longitude: longitude ? Number(longitude) : null,
+      }
+    })
+
+    return NextResponse.json({ ok: true, message: "Coordenadas atualizadas com sucesso" })
+  }
+
+  return NextResponse.json({ error: "Ação inválida" }, { status: 400 })
 }

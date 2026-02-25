@@ -17,6 +17,8 @@ type Isp = {
     techWhatsapp: string
     isActive: boolean
     healthStatus: string
+    latitude: number | null
+    longitude: number | null
     createdAt: string
 }
 
@@ -27,6 +29,8 @@ export default function AdminPage() {
     const [tab, setTab] = useState<Tab>("pending")
     const [loading, setLoading] = useState(true)
     const [acting, setActing] = useState<string | null>(null)
+    const [editingCoords, setEditingCoords] = useState<string | null>(null)
+    const [coordsForm, setCoordsForm] = useState({ lat: "", lon: "" })
     const router = useRouter()
 
     const fetchIsps = useCallback(async () => {
@@ -40,15 +44,18 @@ export default function AdminPage() {
 
     useEffect(() => { fetchIsps() }, [fetchIsps])
 
-    async function handleAction(id: string, action: "approve" | "reject") {
-        if (!confirm(action === "approve" ? "Aprovar este ISP e enviar e-mail?" : "Rejeitar e remover este ISP?")) return
+    async function handleAction(id: string, action: "approve" | "reject" | "update_coords", extraData: any = {}) {
+        if (action === "approve" && !confirm("Aprovar este ISP e enviar e-mail?")) return
+        if (action === "reject" && !confirm("Rejeitar e remover este ISP?")) return
+
         setActing(id)
         await fetch(`/api/admin/isp/${id}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action }),
+            body: JSON.stringify({ action, ...extraData }),
         })
         setActing(null)
+        setEditingCoords(null)
         fetchIsps()
     }
 
@@ -167,6 +174,42 @@ export default function AdminPage() {
                                             </div>
                                         ))}
                                     </div>
+
+                                    {/* Edit Coords Area */}
+                                    {editingCoords === isp.id && (
+                                        <div style={{ marginTop: "1rem", padding: "1rem", background: "rgba(0,0,0,0.2)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-subtle)", display: "flex", gap: "0.75rem", alignItems: "flex-end" }}>
+                                            <div>
+                                                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "4px" }}>Latitude</label>
+                                                <input
+                                                    type="number" step="any"
+                                                    value={coordsForm.lat} onChange={(e) => setCoordsForm({ ...coordsForm, lat: e.target.value })}
+                                                    style={{ background: "var(--bg-card)", border: "1px solid var(--border)", padding: "4px 8px", color: "var(--text-primary)", borderRadius: "2px", width: "100px", fontSize: "0.875rem" }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: "block", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "4px" }}>Longitude</label>
+                                                <input
+                                                    type="number" step="any"
+                                                    value={coordsForm.lon} onChange={(e) => setCoordsForm({ ...coordsForm, lon: e.target.value })}
+                                                    style={{ background: "var(--bg-card)", border: "1px solid var(--border)", padding: "4px 8px", color: "var(--text-primary)", borderRadius: "2px", width: "100px", fontSize: "0.875rem" }}
+                                                />
+                                            </div>
+                                            <button
+                                                className="btn btn-primary"
+                                                disabled={acting === isp.id}
+                                                onClick={() => handleAction(isp.id, "update_coords", { latitude: coordsForm.lat, longitude: coordsForm.lon })}
+                                                style={{ padding: "0.35rem 1rem", fontSize: "0.875rem" }}
+                                            >
+                                                {acting === isp.id ? "..." : "Salvar"}
+                                            </button>
+                                            <button
+                                                onClick={() => setEditingCoords(null)}
+                                                style={{ padding: "0.35rem 1rem", fontSize: "0.875rem", background: "transparent", color: "var(--text-muted)", border: "none", cursor: "pointer" }}
+                                            >
+                                                Cancelar
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Ações */}
@@ -192,6 +235,20 @@ export default function AdminPage() {
                                         }}
                                     >
                                         ✕ {isp.isActive ? "Remover provedor" : "Rejeitar"}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setEditingCoords(isp.id)
+                                            setCoordsForm({ lat: isp.latitude?.toString() || "", lon: isp.longitude?.toString() || "" })
+                                        }}
+                                        style={{
+                                            padding: "0.5rem 1rem", fontSize: "0.875rem", fontFamily: "var(--font-sans)",
+                                            fontWeight: 600, cursor: "pointer", borderRadius: "var(--radius-sm)",
+                                            background: "transparent", border: "1px solid var(--border)",
+                                            color: "var(--text-secondary)", transition: "all 0.2s", marginTop: "auto"
+                                        }}
+                                    >
+                                        Definir GPS
                                     </button>
                                 </div>
                             </div>
