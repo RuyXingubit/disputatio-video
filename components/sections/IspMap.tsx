@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { Map, Overlay } from "pigeon-maps"
 
 type IspPoint = {
     id: string
@@ -12,14 +13,9 @@ type IspPoint = {
     healthStatus: string
 }
 
-// Converter lat/lon para coordenadas SVG do mapa do Brasil
-// Bounding box aproximado: lat -33.75 até 5.27, lon -73.98 até -28.85
-function geoToSvg(lat: number, lon: number, svgW: number, svgH: number) {
-    const minLat = -33.75, maxLat = 5.27
-    const minLon = -73.98, maxLon = -28.85
-    const x = ((lon - minLon) / (maxLon - minLon)) * svgW
-    const y = ((maxLat - lat) / (maxLat - minLat)) * svgH
-    return { x, y }
+// CartoDB Dark Matter para o tema do Disputatio
+const cartoDarkProvider = (x: number, y: number, z: number) => {
+    return `https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/${z}/${x}/${y}.png`
 }
 
 export function IspMap() {
@@ -32,9 +28,6 @@ export function IspMap() {
             .then((data) => setIsps(data.isps ?? []))
             .catch(() => { })
     }, [])
-
-    const svgW = 500
-    const svgH = 480
 
     return (
         <section id="parceiros" className="section">
@@ -54,49 +47,38 @@ export function IspMap() {
 
                 <div
                     style={{
-                        maxWidth: "600px",
+                        maxWidth: "800px",
                         margin: "0 auto",
                         background: "var(--bg-card)",
                         border: "1px solid var(--border-subtle)",
                         borderRadius: "var(--radius-lg)",
                         overflow: "hidden",
                         position: "relative",
+                        aspectRatio: "16/10",
                     }}
                 >
-                    <svg
-                        viewBox={`0 0 ${svgW} ${svgH}`}
-                        style={{ width: "100%", height: "auto", display: "block" }}
-                        aria-label="Mapa do Brasil com localização dos ISPs parceiros"
+                    {isps.length === 0 && (
+                        <div style={{
+                            position: "absolute", inset: 0, zIndex: 10,
+                            display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)"
+                        }}>
+                            <p style={{
+                                color: "var(--text-muted)", fontSize: "14px",
+                                fontFamily: "Space Grotesk, sans-serif"
+                            }}>Aguardando primeiros parceiros...</p>
+                        </div>
+                    )}
+
+                    <Map
+                        provider={cartoDarkProvider}
+                        defaultCenter={[-14.235, -51.925]} // Centro do Brasil
+                        defaultZoom={4}
+                        minZoom={3}
+                        maxZoom={10}
+                        touchEvents={true}
+                        mouseEvents={true}
                     >
-                        {/* Silhueta simplificada do Brasil (SVG path) */}
-                        <path
-                            d="M170,30 L200,20 L250,25 L310,40 L360,30 L410,50 L450,80 L470,120
-                 L465,160 L450,200 L440,240 L460,270 L470,310 L450,350 L420,380
-                 L390,410 L360,430 L330,440 L290,445 L260,435 L230,420 L200,400
-                 L175,370 L150,340 L130,300 L120,260 L110,220 L100,180 L90,140
-                 L100,100 L120,70 L150,45 Z"
-                            fill="hsl(150, 6%, 10%)"
-                            stroke="var(--border)"
-                            strokeWidth="1.5"
-                        />
-
-                        {/* Se não há ISPs, mostrar mensagem dentro do SVG */}
-                        {isps.length === 0 && (
-                            <text
-                                x={svgW / 2}
-                                y={svgH / 2 + 30}
-                                textAnchor="middle"
-                                fill="var(--text-muted)"
-                                fontSize="14"
-                                fontFamily="Space Grotesk, sans-serif"
-                            >
-                                Aguardando primeiros parceiros...
-                            </text>
-                        )}
-
-                        {/* Pontos dos ISPs */}
                         {isps.map((isp) => {
-                            const pos = geoToSvg(isp.latitude, isp.longitude, svgW, svgH)
                             const isHovered = hovered === isp.id
                             const color = isp.healthStatus === "healthy"
                                 ? "var(--status-healthy)"
@@ -105,64 +87,76 @@ export function IspMap() {
                                     : "var(--status-offline)"
 
                             return (
-                                <g
-                                    key={isp.id}
-                                    className="map-point"
-                                    onMouseEnter={() => setHovered(isp.id)}
-                                    onMouseLeave={() => setHovered(null)}
-                                >
-                                    {/* Anel de pulso */}
-                                    {isHovered && (
-                                        <circle cx={pos.x} cy={pos.y} r="14" fill={color} opacity="0.15" />
-                                    )}
-                                    <circle cx={pos.x} cy={pos.y} r={isHovered ? 8 : 6} fill={color} opacity="0.9" />
-                                    <circle cx={pos.x} cy={pos.y} r="2" fill="white" opacity="0.8" />
+                                <Overlay key={isp.id} anchor={[isp.latitude, isp.longitude]} offset={[12, 12]}>
+                                    <div
+                                        onMouseEnter={() => setHovered(isp.id)}
+                                        onMouseLeave={() => setHovered(null)}
+                                        style={{ position: 'relative' }}
+                                    >
+                                        {/* Ponto / Ping */}
+                                        <div style={{
+                                            width: isHovered ? 16 : 12,
+                                            height: isHovered ? 16 : 12,
+                                            borderRadius: "50%",
+                                            background: color,
+                                            border: "2px solid white",
+                                            boxShadow: isHovered ? `0 0 10px ${color}` : "none",
+                                            transition: "all 0.2s ease",
+                                            cursor: "pointer",
+                                            position: "relative",
+                                            left: isHovered ? -2 : 0,
+                                            top: isHovered ? -2 : 0
+                                        }} />
 
-                                    {/* Tooltip */}
-                                    {isHovered && (
-                                        <g>
-                                            <rect
-                                                x={pos.x + 12}
-                                                y={pos.y - 20}
-                                                width="140"
-                                                height="40"
-                                                rx="4"
-                                                fill="var(--bg-card)"
-                                                stroke="var(--border)"
-                                                strokeWidth="1"
-                                            />
-                                            <text
-                                                x={pos.x + 20}
-                                                y={pos.y - 5}
-                                                fill="var(--text-primary)"
-                                                fontSize="11"
-                                                fontWeight="600"
-                                                fontFamily="Space Grotesk, sans-serif"
-                                            >
-                                                {isp.name}
-                                            </text>
-                                            <text
-                                                x={pos.x + 20}
-                                                y={pos.y + 10}
-                                                fill="var(--text-muted)"
-                                                fontSize="10"
-                                                fontFamily="Space Grotesk, sans-serif"
-                                            >
-                                                {isp.city} — {isp.state}
-                                            </text>
-                                        </g>
-                                    )}
-                                </g>
+                                        {/* Pulso para ativos */}
+                                        {isHovered && (
+                                            <div style={{
+                                                position: "absolute",
+                                                top: -6, left: -6,
+                                                width: 28, height: 28,
+                                                borderRadius: "50%",
+                                                background: color,
+                                                opacity: 0.2,
+                                                animation: "pulse 1.5s infinite",
+                                                pointerEvents: "none"
+                                            }} />
+                                        )}
+
+                                        {/* Tooltip */}
+                                        {isHovered && (
+                                            <div style={{
+                                                position: "absolute",
+                                                bottom: "100%", left: "50%",
+                                                transform: "translate(-50%, -8px)",
+                                                background: "var(--bg-card)",
+                                                border: "1px solid var(--border)",
+                                                padding: "4px 8px",
+                                                borderRadius: "4px",
+                                                whiteSpace: "nowrap",
+                                                zIndex: 100,
+                                                pointerEvents: "none",
+                                                boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
+                                            }}>
+                                                <div style={{ color: "var(--text-primary)", fontSize: "11px", fontWeight: 600, fontFamily: "Space Grotesk, sans-serif" }}>
+                                                    {isp.name}
+                                                </div>
+                                                <div style={{ color: "var(--text-muted)", fontSize: "10px", fontFamily: "Space Grotesk, sans-serif" }}>
+                                                    {isp.city} — {isp.state}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </Overlay>
                             )
                         })}
-                    </svg>
+                    </Map>
 
                     {/* Legenda */}
                     <div style={{
                         position: "absolute",
                         bottom: "1rem",
                         right: "1rem",
-                        background: "hsl(150, 8%, 6%, 0.85)",
+                        background: "hsl(150, 8%, 6%, 0.9)",
                         backdropFilter: "blur(8px)",
                         border: "1px solid var(--border-subtle)",
                         borderRadius: "var(--radius-sm)",
@@ -170,6 +164,7 @@ export function IspMap() {
                         display: "flex",
                         flexDirection: "column",
                         gap: "0.25rem",
+                        zIndex: 10
                     }}>
                         {[
                             { color: "var(--status-healthy)", label: "Ativo" },
