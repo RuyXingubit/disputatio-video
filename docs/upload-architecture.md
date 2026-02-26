@@ -28,16 +28,32 @@ Decidimos colocar a segurança no roteador L7 principal (Next.js).
 
 ---
 
-## Opção 2: SSL/TLS Wildcard Distribuído Caddy (O Futuro Escalável)
+## Opção 2: SSL/TLS Distribuído com "Magic DNS" Self-Hosted e Fallback (O Futuro Escalável)
 
-A proposta mais avançada exige orquestração SSL, mas livrará a Máquina Mestra (Gateway) totalmente da sobrecarga de banda supracitada. Permite que o upload transite de Client -> Edge (ISP Partner) diretamente.
+Esta é a arquitetura definitiva e autônoma, projetada para livrar a Máquina Mestra (Gateway) da sobrecarga de banda (I/O) sem depender de APIs de terceiros (como Cloudflare) ou de bancos de dados complexos para gerenciar DNS. Ela permite que os arquivos transitem diretamente entre o cliente (Navegador/App) e a borda (ISP Partner) usando HTTPS válido.
 
-**O Fluxo Alvo:**
-1. O domínio principal `.disputatio.com.br` tem seu DNS na Cloudflare.
-2. É criado um registro Wildcard A Record (`*.isp.disputatio.com.br`) apontado não mais para Caddy, mas usando DNS Proxy Inteligente.
-3. Para cada novo Provedor cadastrado, geramos dinamicamente (via SDK do Cloudflare) um sub-registro `parceironet.isp.disputatio.com.br` -> `IP-do-Parceiro`.
-4. O contêiner de Gateway devolve uma URL `https://parceironet.isp.disputatio...` pre-assinada para o painel Front-End.
-5. O cliente baixa em alta banda livre direto do parceiro.
+### 1. A Estratégia do Domínio (Delegação de Subzona)
+Como o Registro.br não suporta registros Wildcard (`*`) nativamente, adotaremos a **delegação de autoridade da subzona** `isp`:
+*   **No Registro.br (Domínio Principal):** Mantemos a gestão do domínio `disputatio.com.br` normalmente (para site principal, e-mails, etc). Criamos apenas um apontamento **NS (Name Server)** delegando a subzona `isp` (ex: `isp.disputatio.com.br`) para o IP da nossa VPS Mestra (através de um registro A, como `ns1.disputatio.com.br`).
+*   **Na VPS Mestra (Gateway):** Subimos um servidor DNS minimalista (como **CoreDNS** ou um serviço Node.js simples rodando na porta UDP 53) configurado para atuar como um **Magic DNS** (estilo `nip.io`).
 
-**Requisições do Provedor:**
-Ao habilitar isso, precisaria injetar um Proxy (Nginx/Caddy) na stack Docker-Compose que já é fornecida à eles, rodando em port mappings :80 / :443 na máquina do provedor que cuida da conexão S3 (e que renova SSL autonomamente via Let's Encrypt / ZeroSSL ou via chave Origem Cloudflare).
+### 2. O Magic DNS (Sem Estado / Stateless)
+O CoreDNS na VPS Mestra usa uma regra simples baseada em Expressão Regular (Regex) para traduzir strings baseadas em IPs diretamente em registros DNS tipo A, sem necessidade de banco de dados ou estado:
+*   **Regra de Resolução:** *"Qualquer requisição no formato `[IP-COM-HIFENS].isp.disputatio.com.br` traduz-se estaticamente para o endereço IP original"*.
+*   **Exemplo Prático:** Se o Gateway precisa conectar o cliente ao ISP de IP `200.150.50.10`, ele gera e envia ao front-end a URL `https://200-150-50-10.isp.disputatio.com.br/video.mp4`.
+*   O Magic DNS local analisa a string textualmente em milissegundos e devolve ao cliente o roteamento exato para a máquina do ISP.
+
+### 3. A Geração de SSL na Ponta (ISP)
+A responsabilidade por responder em HTTPS passa a ser da infraestrutura do provedor:
+1.  A stack Docker Compose distribuída ao parceiro ganha um proxy reverso **Caddy** atuando como front-end do MinIO.
+2.  É fundamental que o parceiro garanta que as **Portas TCP 80 e 443 estejam expostas publicamente** em seu roteador (Sem bloqueios corporativos ou restrições severas de CGNAT).
+3.  Quando a máquina de ISP liga e inicializa o contêiner, o Caddy identifica o seu domínio próprio (`200-150-50-10.isp...`) e inicia um desafio `HTTP-01` automático com a autoridade global **Let's Encrypt**.
+4.  Sendo o desafio completado via porta 80, o certificado SSL é estabelecido (e auto-renovado continuamente), permitindo a conexão segura de ponta a ponta sem o uso de "Man-in-the-Middle".
+
+### 4. A Tolerância a Falhas: O Sistema de "Fallback"
+Devido à diversidade de topologias dos nossos provedores, precisaremos assumir que muitos falharão em abrir as portas 80/443 corretamente, frustrando o Let's Encrypt e inviabilizando o HTTPS na ponta. 
+Para garantir que a plataforma Disputatio nunca pare de receber e enviar vídeos, um plano de contigência degradativo entra em ação automatizada por parte do serviço Gateway:
+
+*   **Health Check Criptográfico:** O serviço Node.js (Gateway) realiza verificações contínuas nas URLs HTTPS de todos os IPs de provedores registrados para atestar a solidez do certificado SSL deles.
+*   **ISP Nível Tier 1 (Conexão Direta Habilitada):** Se o SSL estiver validado: O Gateway devolve as URLs do *Magic DNS* ao Front-End. O ISP assume 100% da carga de transferência de vídeo, aliviando nossa rede hospedada em Cloud (Cenário Ideal).
+*   **ISP Nível Tier 2 (Relay Intermediário - Opção 1):** Se o SSL do ISP for inválido ou causar "Time-out": O modelo degraus da rede falha com controle. O Gateway marca esse ISP temporariamente na base de dados como "sem-SSL". Nesse caso, o Gateway retoma a postura clássica Server-To-Server. O tráfego do cliente é coberto pelo SSL da nossa VPS Mestra (Gateway), re-mascarando toda a entrega pela rede principal. Isso assegura 100% de disponibilidade até que o parceiro ajuste e resolva os problemas técnicos do firewall dele.
