@@ -28,26 +28,26 @@ Decidimos colocar a segurança no roteador L7 principal (Next.js).
 
 ---
 
-## Opção 2: SSL/TLS Distribuído com "Magic DNS" Self-Hosted e Fallback (O Futuro Escalável)
+## Opção 2: SSL/TLS Distribuído com DNS Autoritativo Próprio (PowerDNS) e Fallback (O Futuro Escalável)
 
-Esta é a arquitetura definitiva e autônoma, projetada para livrar a Máquina Mestra (Gateway) da sobrecarga de banda (I/O) sem depender de APIs de terceiros (como Cloudflare) ou de bancos de dados complexos para gerenciar DNS. Ela permite que os arquivos transitem diretamente entre o cliente (Navegador/App) e a borda (ISP Partner) usando HTTPS válido.
+Esta é a arquitetura definitiva e autônoma, projetada para livrar a Máquina Mestra (Gateway) da sobrecarga de banda (I/O) sem depender de APIs de terceiros (como Cloudflare). Ela permite que os arquivos transitem diretamente entre o cliente (Navegador/App) e a borda (ISP Partner) usando HTTPS válido, mantendo total governança sobre a infraestrutura de DNS.
 
-### 1. A Estratégia do Domínio (Delegação de Subzona)
-Como o Registro.br não suporta registros Wildcard (`*`) nativamente, adotaremos a **delegação de autoridade da subzona** `isp`:
-*   **No Registro.br (Domínio Principal):** Mantemos a gestão do domínio `disputatio.com.br` normalmente (para site principal, e-mails, etc). Criamos apenas um apontamento **NS (Name Server)** delegando a subzona `isp` (ex: `isp.disputatio.com.br`) para o IP da nossa VPS Mestra (através de um registro A, como `ns1.disputatio.com.br`).
-*   **Na VPS Mestra (Gateway):** Subimos um servidor DNS minimalista (como **CoreDNS** ou um serviço Node.js simples rodando na porta UDP 53) configurado para atuar como um **Magic DNS** (estilo `nip.io`).
+### 1. A Estratégia do Domínio (Servidor DNS Autoritativo Próprio)
+Para contornar as limitações do Registro.br (que não suporta registros Wildcard `*` nativamente, nem possui API amigável para gestão dinâmica), assumiremos a **autoridade total DNS**:
+*   **No Registro.br:** Alteraremos a delegação (apontamento NS) de `disputatio.com.br` para apontar diretamente para os nossos dois servidores DNS próprios (ex: `ns1.disputatio.com.br` e `ns2.disputatio.com.br`).
+*   **Na Nossa Infraestrutura (PowerDNS):** Subiremos instâncias de um servidor DNS robusto e autoritativo, como o **PowerDNS**. Ele passará a ser a autoridade global para todas as zonas do nosso domínio (Site principal, E-mails, e os nós ISPs).
 
-### 2. O Magic DNS (Sem Estado / Stateless)
-O CoreDNS na VPS Mestra usa uma regra simples baseada em Expressão Regular (Regex) para traduzir strings baseadas em IPs diretamente em registros DNS tipo A, sem necessidade de banco de dados ou estado:
-*   **Regra de Resolução:** *"Qualquer requisição no formato `[IP-COM-HIFENS].isp.disputatio.com.br` traduz-se estaticamente para o endereço IP original"*.
-*   **Exemplo Prático:** Se o Gateway precisa conectar o cliente ao ISP de IP `200.150.50.10`, ele gera e envia ao front-end a URL `https://200-150-50-10.isp.disputatio.com.br/video.mp4`.
-*   O Magic DNS local analisa a string textualmente em milissegundos e devolve ao cliente o roteamento exato para a máquina do ISP.
+### 2. Roteamento Dinâmico (API e Automação no PowerDNS)
+O uso de um DNS próprio nos dá flexibilidade técnica de nível Enterprise para automatizar a rede de entrega:
+*   **Gestão via API:** Quando um novo ISP for cadastrado ou tiver seu IP alterado no painel Admin, o nosso backend Node.js fará uma requisição REST diretamente para a API do PowerDNS (em background) para provisionar e atualizar os registros `A` ou `AAAA`.
+*   **Poder de Resposta:** O PowerDNS suporta backends em banco de dados e até uso prático de LUA/Regex internamente. Assim, podemos designar apontamentos legíveis (Ex: `isp-nome-cidade.disputatio.com.br -> 200.150.50.10`) ou habilitar regras mais automatizadas.
+*   **Exemplo Prático:** O Gateway gera e envia ao front-end a URL `https://isp-nome-cidade.disputatio.com.br/video.mp4`. Como o PowerDNS detém a entrada atualizada, ele resolve o IP instantaneamente para o roteador do parceiro local.
 
 ### 3. A Geração de SSL na Ponta (ISP)
 A responsabilidade por responder em HTTPS passa a ser da infraestrutura do provedor:
 1.  A stack Docker Compose distribuída ao parceiro ganha um proxy reverso **Caddy** atuando como front-end do MinIO.
 2.  É fundamental que o parceiro garanta que as **Portas TCP 80 e 443 estejam expostas publicamente** em seu roteador (Sem bloqueios corporativos ou restrições severas de CGNAT).
-3.  Quando a máquina de ISP liga e inicializa o contêiner, o Caddy identifica o seu domínio próprio (`200-150-50-10.isp...`) e inicia um desafio `HTTP-01` automático com a autoridade global **Let's Encrypt**.
+3.  Quando a máquina de ISP liga e inicializa o contêiner, o Caddy identifica o seu subdomínio DNS mapeado (ex: `isp-nome-cidade.disputatio.com.br`) e inicia um desafio `HTTP-01` automático com a autoridade global **Let's Encrypt**.
 4.  Sendo o desafio completado via porta 80, o certificado SSL é estabelecido (e auto-renovado continuamente), permitindo a conexão segura de ponta a ponta sem o uso de "Man-in-the-Middle".
 
 ### 4. A Tolerância a Falhas: O Sistema de "Fallback"

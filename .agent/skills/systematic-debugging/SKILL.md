@@ -1,109 +1,38 @@
 ---
-name: systematic-debugging
-description: 4-phase systematic debugging methodology with root cause analysis and evidence-based verification. Use when debugging complex issues.
-allowed-tools: Read, Glob, Grep
+name: Systematic Debugging
+description: Structured process for addressing bugs, test failures, or unexpected behaviors.
 ---
 
-# Systematic Debugging
+# Systematic Debugging Skill
 
-> Source: obra/superpowers
+This skill provides a rigorous methodology for identifying, isolating, and fixing software defects. It moves away from "guess-and-check" towards a scientific approach of hypothesis testing and root cause analysis.
 
-## Overview
-This skill provides a structured approach to debugging that prevents random guessing and ensures problems are properly understood before solving.
+## The Debugging Process
 
-## 4-Phase Debugging Process
+### 1. Reproduction & Isolation
+- **Stable Repro**: Create an automated test or simple script that consistently fails.
+- **Isolate Environment**: Ensure external factors (data, network, config) are controlled.
+- **Find Polluter**: Use tools like `find-polluter.sh` to identify tests that interfere with each other.
 
-### Phase 1: Reproduce
-Before fixing, reliably reproduce the issue.
+### 2. Hypothesis & Tracing
+- **Root Cause Tracing**: Use `root-cause-tracing.md` to map the flow of data and state.
+- **Defense in Depth**: Identify where the system *should* have caught the error.
+- **Hypothesis Testing**: Formulate a theory about the bug and design a test to confirm/refute it.
 
-```markdown
-## Reproduction Steps
-1. [Exact step to reproduce]
-2. [Next step]
-3. [Expected vs actual result]
+### 3. Fixing & Verification
+- **Targeted Fix**: Address the root cause, not just the symptom.
+- **Verification**: Ensure the repro test passes and no regressions are introduced.
+- **Regression Testing**: Add the fix to the permanent test suite.
 
-## Reproduction Rate
-- [ ] Always (100%)
-- [ ] Often (50-90%)
-- [ ] Sometimes (10-50%)
-- [ ] Rare (<10%)
-```
+## Core Resources
+Supporting technical documents are located in the skill directory:
+- [Root Cause Tracing](file:///Users/ruy/Code/disputatio-video/.agent/skills/systematic-debugging/root-cause-tracing.md): Methodology for tracking data flow.
+- [Defense in Depth](file:///Users/ruy/Code/disputatio-video/.agent/skills/systematic-debugging/defense-in-depth.md): Strategies for building robust error handling.
+- [Condition-based Waiting](file:///Users/ruy/Code/disputatio-video/.agent/skills/systematic-debugging/condition-based-waiting.md): Best practices for debugging async/timing issues.
 
-### Phase 2: Isolate
-Narrow down the source.
+## Debugging Workflows
+- **Under Pressure**: Use the "test-pressure" guides (1, 2, 3) for high-stakes or time-sensitive debugging.
+- **Academic Approach**: Use `test-academic.md` for deep structural analysis of complex logic.
 
-```markdown
-## Isolation Questions
-- When did this start happening?
-- What changed recently?
-- Does it happen in all environments?
-- Can we reproduce with minimal code?
-- What's the smallest change that triggers it?
-```
-
-### Phase 3: Understand
-Find the root cause, not just symptoms.
-
-```markdown
-## Root Cause Analysis
-### The 5 Whys
-1. Why: [First observation]
-2. Why: [Deeper reason]
-3. Why: [Still deeper]
-4. Why: [Getting closer]
-5. Why: [Root cause]
-```
-
-### Phase 4: Fix & Verify
-Fix and verify it's truly fixed.
-
-```markdown
-## Fix Verification
-- [ ] Bug no longer reproduces
-- [ ] Related functionality still works
-- [ ] No new issues introduced
-- [ ] Test added to prevent regression
-```
-
-## Debugging Checklist
-
-```markdown
-## Before Starting
-- [ ] Can reproduce consistently
-- [ ] Have minimal reproduction case
-- [ ] Understand expected behavior
-
-## During Investigation
-- [ ] Check recent changes (git log)
-- [ ] Check logs for errors
-- [ ] Add logging if needed
-- [ ] Use debugger/breakpoints
-
-## After Fix
-- [ ] Root cause documented
-- [ ] Fix verified
-- [ ] Regression test added
-- [ ] Similar code checked
-```
-
-## Common Debugging Commands
-
-```bash
-# Recent changes
-git log --oneline -20
-git diff HEAD~5
-
-# Search for pattern
-grep -r "errorPattern" --include="*.ts"
-
-# Check logs
-pm2 logs app-name --err --lines 100
-```
-
-## Anti-Patterns
-
-❌ **Random changes** - "Maybe if I change this..."
-❌ **Ignoring evidence** - "That can't be the cause"
-❌ **Assuming** - "It must be X" without proof
-❌ **Not reproducing first** - Fixing blindly
-❌ **Stopping at symptoms** - Not finding root cause
+---
+*Transformando o "não sei por que parou" no "agora sei exatamente por que falhou".*
